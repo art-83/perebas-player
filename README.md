@@ -9,6 +9,24 @@ Protótipo para testar **Hyprland/Wayland → PipeWire → H.264 → RTSP → Sa
 3. Descubra o IPv4 do **computador** na LAN (`ip -4 addr`). Coloque esse endereço em [tv/settings.js](tv/settings.js). O app da TV inicia a conexão com o PC, portanto o IP da **TV** pode mudar sem alterar a configuração. Se o IP do PC também mudar, configure uma reserva DHCP para ele no roteador ou use um nome DNS local resolvido pela TV. Confirme a resolução desse nome na TV real antes de substituir o IPv4. O PC e a TV devem alcançar um ao outro; cabo no PC é preferível para o teste.
 4. Importe `tv/` como projeto de app **Samsung Smart TV Legacy / SDK 4.5**. Para gerar um ZIP simples, rode `bash scripts/package-tv.sh` e use o pacote `build/PerebasPlayer.zip` no fluxo de instalação de desenvolvimento do SDK. O pacote ainda precisa ser validado pelo SDK e na TV, pois eles não estão disponíveis nesta sessão. [Documentação de instalação/teste Legacy](https://developer.samsung.com/smarttv/legacy/development-guides/getting-started.html).
 
+Para **Start App Sync** na TV de 2013, gere o ZIP com o IP real do notebook embutido no app e sirva-o na porta HTTP 80:
+
+```bash
+PEREBAS_PC_IP=192.168.15.6 bash scripts/package-tv.sh
+PEREBAS_LAN_IP=192.168.15.6 sudo -E node scripts/serve-tv.js
+```
+
+Substitua pelo IP que você informou em **IP Setting**. Alternativa com Docker, sem `sudo`:
+
+```bash
+docker run -d --rm --name perebas-widget-server --network host \
+  -v "$PWD:/app:ro" -w /app -e PEREBAS_LAN_IP=192.168.15.6 \
+  node:24-bookworm-slim node scripts/serve-tv.js
+docker logs -f perebas-widget-server
+```
+
+Verifique `http://<IP>/widgetlist.xml` no notebook; o servidor registra as requisições da TV. Com o servidor ativo, na TV acesse **Mais aplicativos → Opções → Start App Sync**. O servidor serve apenas `widgetlist.xml` e o ZIP, e pode ser encerrado após a instalação (`docker stop perebas-widget-server`). O resultado precisa ser validado na TV real.
+
 O MAC da TV é opcional para o diagnóstico de rede do PC. Se quiser usá-lo, copie `.env.example` para `.env`, preencha `PEREBAS_TV_MAC` e carregue o arquivo com `set -a; . ./.env; set +a` antes de rodar `python3 desktop/tv_network.py`. O script procura o MAC no cache local de vizinhos e mostra o IP da TV **somente se o PC já a tiver visto na mesma rede**. O endereço real fica no `.env` ignorado pelo Git. O app Orsay não lê variáveis de ambiente do PC e não precisa do MAC para receber RTSP. A reserva DHCP relevante para manter o IP do fluxo está associada ao MAC da interface **cabeada do PC**.
 
 ## Primeiro ensaio
