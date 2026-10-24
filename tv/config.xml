@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<widget>
+  <previewjs>Perebas Player</previewjs>
+  <ver>0.1.0</ver>
+  <widgetname>Perebas Player</widgetname>
+  <description>Teste RTSP para Samsung Smart TV Legacy</description>
+  <width>1280</width>
+  <height>720</height>
+  <fullwidget>y</fullwidget>
+  <srcctl>y</srcctl>
+  <type>user</type>
+</widget>

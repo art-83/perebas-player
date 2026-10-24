@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="pt-BR"><meta charset="utf-8"><title>Marcador de latência</title>
+<style>
+  body { margin: 0; background: #080808; color: #fff; font: bold 10vw monospace; text-align: center; }
+  #box { height: 48vh; padding-top: 2vh; }
+  #hint { font: 2vw sans-serif; }
+</style>
+<div id="box"><span id="count">00000</span> ms</div>
+<div id="hint">Filme este monitor e a TV no mesmo quadro. Espaço alterna as cores.</div>
+<script>
+var start = performance.now(), inverted = false;
+document.onkeydown = function (e) { if (e.code === "Space") inverted = !inverted; };
+function frame() {
+  document.getElementById("count").textContent = ("00000" + Math.floor(performance.now() - start)).slice(-5);
+  document.body.style.background = inverted ? "#fff" : "#080808";
+  document.body.style.color = inverted ? "#000" : "#fff";
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script></html>
