@@ -1,8 +1,9 @@
 /* Samsung Smart TV Legacy / Orsay. Sem sintaxe JavaScript moderna. */
 var Perebas = {
   player: null,
-  cacheValues: [100, 300, 600, 1000],
-  cacheIndex: 1,
+  mode: "game",
+  cacheValues: { game: [100, 300], film: [1000, 2000] },
+  cacheIndex: 0,
   startedAt: 0,
   bufferingAt: 0,
   playing: false,
@@ -19,11 +20,12 @@ var Perebas = {
   status: function (message) { document.getElementById("status").innerHTML = message; this.log(message); },
   url: function () {
     return "rtsp://" + PEREBAS_HOST + ":" + PEREBAS_PORT + "/" + PEREBAS_PATH +
-      "|caching=" + this.cacheValues[this.cacheIndex];
+      "-" + this.mode + "|caching=" + this.cacheValues[this.mode][this.cacheIndex];
   },
   details: function () {
-    document.getElementById("details").innerHTML = this.url() +
-      "<br>ENTER: iniciar/parar &nbsp; VERMELHO: mudar cache &nbsp; RETURN: parar";
+    document.getElementById("details").innerHTML = "Modo: " +
+      (this.mode === "game" ? "JOGO" : "FILME") + " &nbsp; " + this.url() +
+      "<br>ENTER: iniciar/parar &nbsp; VERDE: modo &nbsp; VERMELHO: cache &nbsp; RETURN: parar";
   },
   init: function () {
     this.startedAt = new Date().getTime();
@@ -60,9 +62,16 @@ var Perebas = {
     var key = event.keyCode;
     if (key === 13) { if (this.playing) this.stop(); else this.play(); }
     else if (key === 108 || key === 403) {
-      this.cacheIndex = (this.cacheIndex + 1) % this.cacheValues.length;
-      this.details(); this.status("Cache: " + this.cacheValues[this.cacheIndex] + " ms");
+      this.cacheIndex = (this.cacheIndex + 1) % this.cacheValues[this.mode].length;
+      this.details(); this.status("Cache: " + this.cacheValues[this.mode][this.cacheIndex] + " ms");
       if (this.playing) { this.stop(); this.play(); }
+    } else if (key === 20 || key === 404) {
+      var wasPlaying = this.playing;
+      if (wasPlaying) this.stop();
+      this.mode = this.mode === "game" ? "film" : "game";
+      this.cacheIndex = 0;
+      this.details(); this.status("Modo " + (this.mode === "game" ? "JOGO" : "FILME"));
+      if (wasPlaying) this.play();
     } else if (key === 88 || key === 10009) this.stop();
   },
   onBufferingStart: function () { Perebas.bufferingAt = new Date().getTime(); Perebas.status("Buffering iniciado"); },

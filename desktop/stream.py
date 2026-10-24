@@ -17,6 +17,10 @@ PORTAL_NAME = "org.freedesktop.portal.Desktop"
 PORTAL_PATH = "/org/freedesktop/portal/desktop"
 SCREENCAST = "org.freedesktop.portal.ScreenCast"
 REQUEST = "org.freedesktop.portal.Request"
+MODES = {
+    "game": {"size": "1280x720", "fps": 60, "bitrate": "6M", "bufsize": "500k"},
+    "film": {"size": "1920x1080", "fps": 30, "bitrate": "10M", "bufsize": "4M"},
+}
 
 
 class PortalCapture:
@@ -92,14 +96,20 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--host", default="127.0.0.1", help="IPv4 do MediaMTX")
     parser.add_argument("--port", type=int, default=8554)
-    parser.add_argument("--path", default="perebas")
-    parser.add_argument("--size", default="1280x720", choices=["1280x720", "1920x1080"])
-    parser.add_argument("--fps", type=int, default=60, choices=[30, 60])
+    parser.add_argument("--path", default="perebas", help="prefixo: publica em <prefixo>-game ou <prefixo>-film")
+    parser.add_argument("--mode", choices=MODES, default="game")
+    parser.add_argument("--size", choices=["1280x720", "1920x1080"])
+    parser.add_argument("--fps", type=int, choices=[30, 60])
     parser.add_argument("--encoder", choices=["vaapi", "nvenc", "libx264"], default="vaapi")
     parser.add_argument("--render-device", default="/dev/dri/renderD128")
-    parser.add_argument("--bitrate", default="6M")
+    parser.add_argument("--bitrate")
     parser.add_argument("--test-pattern", action="store_true", help="isola a captura; não testa latência da tela")
     args = parser.parse_args()
+    profile = MODES[args.mode]
+    args.size = args.size or profile["size"]
+    args.fps = args.fps or profile["fps"]
+    args.bitrate = args.bitrate or profile["bitrate"]
+    stream_path = args.path + "-" + args.mode
     if not os.environ.get("HYPRLAND_INSTANCE_SIGNATURE") and not args.test_pattern:
         parser.error("esta captura requer uma sessão Hyprland")
     for binary in ("ffmpeg", "gst-launch-1.0"):
@@ -132,19 +142,24 @@ def main():
         ff += ["-vaapi_device", args.render_device, "-vf", "format=nv12,hwupload",
                "-c:v", "h264_vaapi", "-bf", "0"]
     elif args.encoder == "nvenc":
-        ff += ["-c:v", "h264_nvenc", "-preset", "p1", "-tune", "ull", "-bf", "0"]
+        ff += ["-c:v", "h264_nvenc", "-preset", "p1" if args.mode == "game" else "p5",
+               "-tune", "ull" if args.mode == "game" else "hq",
+               "-bf", "0" if args.mode == "game" else "2"]
     else:
-        ff += ["-c:v", "libx264", "-preset", "ultrafast", "-tune", "zerolatency",
-               "-bf", "0"]
+        ff += ["-c:v", "libx264", "-preset", "ultrafast" if args.mode == "game" else "medium",
+               "-bf", "0" if args.mode == "game" else "2"]
+        if args.mode == "game":
+            ff += ["-tune", "zerolatency"]
     ff += ["-b:v", args.bitrate, "-maxrate", args.bitrate,
-           "-bufsize", "1M", "-g", str(args.fps)]
+           "-bufsize", profile["bufsize"],
+           "-g", str(args.fps if args.mode == "game" else args.fps * 2)]
     if args.encoder != "vaapi":
         ff += ["-pix_fmt", "yuv420p"]
     ff += ["-f", "rtsp", "-rtsp_transport", "tcp",
-           "rtsp://%s:%d/%s" % (args.host, args.port, args.path)]
+           "rtsp://%s:%d/%s" % (args.host, args.port, stream_path)]
 
-    print("Publicando rtsp://%s:%d/%s (%s, %s, %d fps)" %
-          (args.host, args.port, args.path, args.encoder, args.size, args.fps), flush=True)
+    print("Publicando rtsp://%s:%d/%s (modo %s, %s, %s, %d fps)" %
+          (args.host, args.port, stream_path, args.mode, args.encoder, args.size, args.fps), flush=True)
     capture = None
     encoder = None
     try:
